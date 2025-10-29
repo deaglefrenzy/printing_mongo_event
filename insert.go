@@ -23,7 +23,7 @@ func main() {
 	defer cancel()
 
 	// 1. Connect to MongoDB (replica set required for change streams)
-	uri := "mongodb://lucy:password@localhost:51406,localhost:51409,localhost:51406/?replicaSet=lucy-mongo&authSource=admin"
+	uri := "mongodb://lucy:password@localhost:27017,localhost:27018,localhost:27019/?replicaSet=lucy-mongo&authSource=admin"
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {

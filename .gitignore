@@ -1,2 +1,3 @@
 .env
 /volumes
+/conf/mongo/mongo-keyfile

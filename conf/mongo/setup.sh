@@ -4,8 +4,8 @@ sleep 5
 mongosh --host mongo1 \
   --username "${MONGO_INITDB_ROOT_USERNAME}" \
   --password "${MONGO_INITDB_ROOT_PASSWORD}" \
-  --authenticationDatabase "admin" <<'EOF'
-const rsName = ${MONGO_REPLICA_SET_NAME};
+  --authenticationDatabase "admin" <<EOF
+const rsName = "${MONGO_REPLICA_SET}";
 const cfg = {
   _id: rsName,
   version: 1,
@@ -24,7 +24,7 @@ if (alreadyInit()) {
   print("Replica set already initialized. Name:", rs.status().set);
 } else {
   print("Initializing replica set:", rsName);
-  try { rs.initiate(cfg); } 
+  try { rs.initiate(cfg); }
   catch (e) {
     if ((e.codeName === "AlreadyInitialized") || /already initialized/i.test(e.message)) {
       print("Replica set was already initialized.");
@@ -37,9 +37,9 @@ if (alreadyInit()) {
 // wait until node is primary/secondary
 for (let i = 0; i < 30; i++) {
   const isMaster = db.isMaster();
-  if (isMaster.ismaster || isMaster.secondary) { 
-    print("Node is now", isMaster.ismaster ? "PRIMARY" : "SECONDARY"); 
-    break; 
+  if (isMaster.ismaster || isMaster.secondary) {
+    print("Node is now", isMaster.ismaster ? "PRIMARY" : "SECONDARY");
+    break;
   }
   sleep(1000);
 }
