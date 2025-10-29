@@ -12,7 +12,7 @@ import (
 
 func TestInsertDocument(t *testing.T) {
 	// Define the MongoDB connection URI
-	uri := "mongodb://mongo-primary:27017,mongo-secondary1:27017,mongo-secondary2:27017/?replicaSet=rs0"
+	uri := "mongodb://localhost:51406/?replicaSet=lucy-mongo&authSource=admin"
 
 	// Create a context with a timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

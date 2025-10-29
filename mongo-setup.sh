@@ -1,46 +1,56 @@
 #!/bin/bash
-sleep 5
 
-mongosh --host lucy-mongo1 \
-  --username "${MONGO_INITDB_ROOT_USERNAME}" \
-  --password "${MONGO_INITDB_ROOT_PASSWORD}" \
-  --authenticationDatabase "admin" <<'EOF'
-const rsName = process.env.MONGO_REPLICA_SET;
-const cfg = {
-  _id: rsName,
-  version: 1,
-  members: [
-    { _id: 1, host: "lucy-mongo1:27017", priority: 3 },
-    { _id: 2, host: "lucy-mongo2:27017", priority: 2 },
-    { _id: 3, host: "lucy-mongo3:27017", priority: 1 },
-  ],
-};
+set -e
 
-function alreadyInit() {
-  try { const s = rs.status(); return !!s.set; } catch (_) { return false; }
-}
+ENV_FILE=".env"
+KEYFILE_PATH="conf/mongo/mongo-keyfile"
+MONGO_UID=999
+MONGO_GID=999
 
-if (alreadyInit()) {
-  print("Replica set already initialized. Name:", rs.status().set);
-} else {
-  print("Initializing replica set:", rsName);
-  try { rs.initiate(cfg); } 
-  catch (e) {
-    if ((e.codeName === "AlreadyInitialized") || /already initialized/i.test(e.message)) {
-      print("Replica set was already initialized.");
-    } else {
-      throw e;
-    }
-  }
-}
+# Step 1: Copy .env.example → .env if missing
+if [ ! -f "$ENV_FILE" ]; then
+  echo "📄 Creating .env file from .env.example..."
+  cp .env.example "$ENV_FILE"
+  cp app/.env.example app/.env 2>/dev/null || true
+fi
 
-// wait until node is primary/secondary
-for (let i = 0; i < 30; i++) {
-  const isMaster = db.isMaster();
-  if (isMaster.ismaster || isMaster.secondary) { 
-    print("Node is now", isMaster.ismaster ? "PRIMARY" : "SECONDARY"); 
-    break; 
-  }
-  sleep(1000);
-}
-EOF
+# Step 2: Ask user for replica set name
+read -p "Enter replica set name [default: lucy-mongo]: " REPLICA_NAME
+REPLICA_NAME=${REPLICA_NAME:-lucy-mongo}
+
+# Update or append MONGO_REPLICA_SET in .env
+if grep -q "^MONGO_REPLICA_SET=" "$ENV_FILE"; then
+  sed -i.bak "s/^MONGO_REPLICA_SET=.*/MONGO_REPLICA_SET=${REPLICA_NAME}/" "$ENV_FILE"
+  rm -f "$ENV_FILE.bak"
+else
+  echo "MONGO_REPLICA_SET=${REPLICA_NAME}" >> "$ENV_FILE"
+fi
+echo "✅ Replica set name set to: ${REPLICA_NAME}"
+
+# Step 3: Generate mongo-keyfile if requested
+read -p "Generate mongo-keyfile? [Y/n]: " GEN_KEYFILE
+GEN_KEYFILE=${GEN_KEYFILE:-Y}
+
+if [[ "$GEN_KEYFILE" =~ ^[Yy]$ ]]; then
+  mkdir -p conf/mongo
+
+  # Prevent directory mistake
+  if [ -d "$KEYFILE_PATH" ]; then
+    echo "❌ ERROR: $KEYFILE_PATH is a directory. Please remove it (rm -rf $KEYFILE_PATH)."
+    exit 1
+  fi
+
+  if [ ! -f "$KEYFILE_PATH" ]; then
+    echo "🔑 Generating mongo-keyfile..."
+    openssl rand -base64 756 > "$KEYFILE_PATH"
+    chmod 400 "$KEYFILE_PATH"
+    chown $MONGO_UID:$MONGO_GID "$KEYFILE_PATH" || true
+    echo "✅ mongo-keyfile generated at $KEYFILE_PATH"
+  else
+    echo "ℹ️ mongo-keyfile already exists, skipping..."
+  fi
+else
+  echo "ℹ️ Skipping keyfile generation."
+fi
+
+echo "🎉 Setup complete. You can now run: docker compose up -d"

@@ -23,7 +23,8 @@ func main() {
 	defer cancel()
 
 	// 1. Connect to MongoDB (replica set required for change streams)
-	uri := "mongodb://localhost:27017/?replicaSet=rs0"
+	uri := "mongodb://lucy:password@localhost:51406,localhost:51409,localhost:51406/?replicaSet=lucy-mongo&authSource=admin"
+
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
 		log.Fatal(err)
@@ -34,7 +35,8 @@ func main() {
 	collName := "items"
 	collection := client.Database(dbName).Collection(collName)
 
-	fmt.Printf("✅ Connected to MongoDB. Listening for inserts on: %s.%s\n", dbName, collName)
+	fmt.Printf("✅ Connected to MongoDB on: %s\n", uri)
+	fmt.Printf("👂 Listening for inserts on: %s.%s\n", dbName, collName)
 	fmt.Println("--------------------------------------------------")
 
 	// 2. Simulate inserting a document in background
